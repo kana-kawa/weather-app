@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 天気予報アプリ
 
-## Getting Started
+任意の都市名、または現在地の気温・天気・湿度・降水確率をカレンダーから日付を選んで確認できる Web アプリです。
 
-First, run the development server:
+- Next.js (App Router) + TypeScript + Tailwind CSS
+- [OpenWeatherMap](https://openweathermap.org/api) の Geocoding API / Current Weather API / 5 Day Forecast API を使用
+- APIキーはサーバー側の環境変数（`.env.local` / Vercel の Environment Variables）でのみ管理し、クライアントには一切渡しません
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## セットアップ
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. 依存関係をインストール
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. OpenWeatherMap の無料アカウントを作成し、APIキーを取得
+   - https://home.openweathermap.org/users/sign_up
+   - 発行直後は反映まで最大2時間ほどかかる場合があります
 
-## Learn More
+3. `.env.local` にAPIキーを設定（このファイルは Git 管理対象外です）
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   OPENWEATHER_API_KEY=あなたのAPIキー
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. 開発サーバーを起動
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   npm run dev
+   ```
 
-## Deploy on Vercel
+   http://localhost:3000 を開いて確認できます。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 機能
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 都市名検索（Geocoding API）または現在地取得（ブラウザの Geolocation API）
+- 現在の気温・天気・体感温度を表示
+- カレンダーで日付を選択し、その日の最高/最低気温・湿度・降水確率・3時間ごとの予報を表示（OpenWeatherMap 無料プランの制約上、当日から5日先まで選択可能）
+
+## デプロイ（Vercel）
+
+このリポジトリは Vercel に接続されています。環境変数 `OPENWEATHER_API_KEY` は Vercel プロジェクトの Settings → Environment Variables に設定してください（コードには含まれません）。

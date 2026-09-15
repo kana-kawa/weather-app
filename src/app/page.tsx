@@ -1,69 +1,134 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useState } from "react";
+import CitySearch from "@/components/CitySearch";
+import WeatherCalendar from "@/components/WeatherCalendar";
+import WeatherDisplay from "@/components/WeatherDisplay";
+import type { GeocodeResult, WeatherResponse } from "@/lib/types";
+
+type Location = {
+  name: string;
+  country: string;
+  lat: number;
+  lon: number;
+};
 
 export default function Home() {
+  const [location, setLocation] = useState<Location | null>(null);
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchWeather = useCallback(async (loc: Location) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        lat: String(loc.lat),
+        lon: String(loc.lon),
+        name: loc.name,
+        country: loc.country,
+      });
+      const res = await fetch(`/api/weather?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "天気情報の取得に失敗しました。");
+      }
+      setWeather(data as WeatherResponse);
+      setSelectedDate((data as WeatherResponse).daily[0]?.date ?? "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "天気情報の取得に失敗しました。");
+      setWeather(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleCitySelect = useCallback(
+    (result: GeocodeResult) => {
+      const loc: Location = {
+        name: result.name,
+        country: result.country,
+        lat: result.lat,
+        lon: result.lon,
+      };
+      setLocation(loc);
+      fetchWeather(loc);
+    },
+    [fetchWeather]
+  );
+
+  const handleUseCurrentLocation = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setError("このブラウザは位置情報の取得に対応していません。");
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        const loc: Location = {
+          name: "現在地",
+          country: "",
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        };
+        setLocation(loc);
+        fetchWeather(loc);
+      },
+      () => {
+        setLocating(false);
+        setError(
+          "位置情報を取得できませんでした。ブラウザの位置情報許可を確認してください。"
+        );
+      }
+    );
+  }, [fetchWeather]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex min-h-screen flex-col items-center gap-6 bg-gradient-to-b from-sky-50 to-white px-4 py-10 dark:from-slate-950 dark:to-black sm:px-6">
+      <header className="text-center">
+        <h1 className="text-2xl font-bold text-sky-900 dark:text-sky-100">
+          ☀️ 天気予報
+        </h1>
+        <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+          都市を検索するか現在地から天気を確認できます
+        </p>
+      </header>
+
+      <CitySearch
+        onSelect={handleCitySelect}
+        onUseCurrentLocation={handleUseCurrentLocation}
+        locating={locating}
+      />
+
+      {loading && (
+        <p className="text-sm text-black/60 dark:text-white/60">
+          読み込み中…
+        </p>
+      )}
+
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {weather && !loading && (
+        <>
+          <WeatherCalendar
+            availableDates={weather.daily.map((d) => d.date)}
+            selectedDate={selectedDate}
+            onSelect={setSelectedDate}
+          />
+          <WeatherDisplay weather={weather} selectedDate={selectedDate} />
+        </>
+      )}
+
+      {!location && !loading && (
+        <p className="mt-8 max-w-md text-center text-sm text-black/50 dark:text-white/50">
+          上の検索欄から都市名を入力するか、「現在地の天気を見る」を押してください。
+        </p>
+      )}
     </div>
   );
 }

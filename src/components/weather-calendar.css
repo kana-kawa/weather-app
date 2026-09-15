@@ -1,0 +1,62 @@
+.weather-calendar .react-calendar {
+  width: 100%;
+  max-width: 360px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  background: var(--calendar-bg, #fff);
+  font-family: inherit;
+  padding: 0.5rem;
+}
+
+.weather-calendar .react-calendar__navigation button {
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.weather-calendar .react-calendar__tile {
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.3rem;
+}
+
+.weather-calendar .react-calendar__tile:enabled:hover,
+.weather-calendar .react-calendar__tile:enabled:focus {
+  background-color: #bae6fd;
+}
+
+.weather-calendar .react-calendar__tile--now {
+  background: #e0f2fe;
+}
+
+.weather-calendar .react-calendar__tile--active {
+  background: #0ea5e9 !important;
+  color: white;
+}
+
+.weather-calendar .react-calendar__tile:disabled {
+  color: #cbd5e1;
+  background-color: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .weather-calendar .react-calendar {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+  }
+  .weather-calendar .react-calendar__navigation button {
+    color: #7dd3fc;
+  }
+  .weather-calendar .react-calendar__tile--now {
+    background: #0c4a6e;
+  }
+  .weather-calendar .react-calendar__tile:enabled:hover,
+  .weather-calendar .react-calendar__tile:enabled:focus {
+    background-color: #075985;
+  }
+  .weather-calendar .react-calendar__tile:disabled {
+    color: #475569;
+  }
+  .weather-calendar abbr {
+    color: #e2e8f0;
+  }
+}
