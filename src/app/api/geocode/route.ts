@@ -9,6 +9,7 @@ type NominatimResult = {
   name: string;
   lat: string;
   lon: string;
+  importance?: number;
   address?: {
     city?: string;
     town?: string;
@@ -30,9 +31,9 @@ function nominatimToGeocodeResult(r: NominatimResult): GeocodeResult {
   };
 }
 
-async function searchNominatim(
+async function searchNominatimRaw(
   params: Record<string, string>
-): Promise<GeocodeResult[]> {
+): Promise<NominatimResult[]> {
   const url = new URL(NOMINATIM_URL);
   url.searchParams.set("format", "json");
   url.searchParams.set("addressdetails", "1");
@@ -46,8 +47,36 @@ async function searchNominatim(
     headers: { "User-Agent": NOMINATIM_USER_AGENT },
   });
   if (!res.ok) return [];
-  const data = (await res.json()) as NominatimResult[];
-  return data.map(nominatimToGeocodeResult);
+  return (await res.json()) as NominatimResult[];
+}
+
+const CONFIDENT_IMPORTANCE = 0.4;
+const ADMIN_SUFFIXES = ["市", "区", "町", "村"];
+
+// A bare Japanese place name (city omitted its "市" suffix, etc.) can
+// coincidentally match obscure same-named neighborhoods elsewhere in Japan
+// with near-identical low importance scores, burying the real city (which
+// is indexed under its full official name) out of the top results. Retry
+// with common administrative suffixes and keep whichever attempt Nominatim
+// is most confident about.
+async function bestJapaneseCityMatch(city: string): Promise<NominatimResult[]> {
+  const hasSuffix = /[市区町村都道府県]$/.test(city);
+  const candidates = hasSuffix
+    ? [city]
+    : [city, ...ADMIN_SUFFIXES.map((suffix) => `${city}${suffix}`)];
+
+  let best: NominatimResult[] = [];
+  let bestImportance = -1;
+  for (const candidate of candidates) {
+    const results = await searchNominatimRaw({ city: candidate, countrycodes: "jp" });
+    const importance = results[0]?.importance ?? -1;
+    if (importance > bestImportance) {
+      bestImportance = importance;
+      best = results;
+    }
+    if (bestImportance >= CONFIDENT_IMPORTANCE) break;
+  }
+  return best;
 }
 
 // OpenWeatherMap's geocoder only reliably matches Japanese place names when
@@ -55,13 +84,14 @@ async function searchNominatim(
 // because the indexed form is "札幌市"). Fall back to Nominatim, which
 // normalizes Japanese administrative names, when OWM finds nothing.
 async function searchJapaneseFallback(city: string): Promise<GeocodeResult[]> {
-  const jpCity = await searchNominatim({ city, countrycodes: "jp" });
-  if (jpCity.length > 0) return jpCity;
+  const jpCity = await bestJapaneseCityMatch(city);
+  if (jpCity.length > 0) return jpCity.map(nominatimToGeocodeResult);
 
-  const anyCity = await searchNominatim({ city });
-  if (anyCity.length > 0) return anyCity;
+  const anyCity = await searchNominatimRaw({ city });
+  if (anyCity.length > 0) return anyCity.map(nominatimToGeocodeResult);
 
-  return searchNominatim({ q: city });
+  const freeform = await searchNominatimRaw({ q: city });
+  return freeform.map(nominatimToGeocodeResult);
 }
 
 export async function GET(request: NextRequest) {
