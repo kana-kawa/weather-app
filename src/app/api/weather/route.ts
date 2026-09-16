@@ -71,10 +71,22 @@ export async function GET(request: NextRequest) {
   const forecastData = await forecastRes.json();
 
   const forecastList: OWMForecastItem[] = forecastData.list ?? [];
+  const tzOffsetSec: number = forecastData.city?.timezone ?? 0;
+
+  // dt_txt is always UTC; shift by the location's UTC offset to get its local date/time.
+  function toLocalDateTime(dtSeconds: number) {
+    const local = new Date((dtSeconds + tzOffsetSec) * 1000);
+    const y = local.getUTCFullYear();
+    const m = String(local.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(local.getUTCDate()).padStart(2, "0");
+    const hh = String(local.getUTCHours()).padStart(2, "0");
+    const mm = String(local.getUTCMinutes()).padStart(2, "0");
+    return { date: `${y}-${m}-${d}`, time: `${hh}:${mm}` };
+  }
 
   const byDate = new Map<string, OWMForecastItem[]>();
   for (const item of forecastList) {
-    const date = item.dt_txt.slice(0, 10);
+    const { date } = toLocalDateTime(item.dt);
     const list = byDate.get(date) ?? [];
     list.push(item);
     byDate.set(date, list);
@@ -84,7 +96,7 @@ export async function GET(request: NextRequest) {
     ([date, items]) => {
       const entries: ForecastEntry[] = items.map((item) => ({
         dt: item.dt,
-        time: item.dt_txt.slice(11, 16),
+        time: toLocalDateTime(item.dt).time,
         temp: Math.round(item.main.temp),
         humidity: item.main.humidity,
         pop: Math.round((item.pop ?? 0) * 100),
@@ -94,7 +106,7 @@ export async function GET(request: NextRequest) {
       }));
 
       const noonEntry =
-        items.find((item) => item.dt_txt.slice(11, 16) === "12:00") ??
+        items.find((item) => toLocalDateTime(item.dt).time === "12:00") ??
         items[Math.floor(items.length / 2)];
 
       const temps = items.map((i) => i.main.temp);
